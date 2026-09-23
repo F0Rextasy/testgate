@@ -4,6 +4,7 @@
 
 [![tests](https://img.shields.io/github/actions/workflow/status/F0Rextasy/testgate/test.yml?branch=master&label=tests&style=flat-square&color=3fb950)](https://github.com/F0Rextasy/testgate/actions/workflows/test.yml)
 [![python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
+[![skills](https://skills.sh/b/F0Rextasy/testgate?style=flat-square)](https://skills.sh/F0Rextasy/testgate)
 [![license](https://img.shields.io/badge/license-MIT-3fb950?style=flat-square)](LICENSE)
 
 ![testgate finding vacuous tests](assets/demo.svg)
@@ -15,6 +16,10 @@ Coverage went up, the suite stayed green, and the bug shipped anyway - the new t
 ## Quick start
 
 ```bash
+# install the skill into any agent (Claude Code, Codex, Cursor, OpenCode, ...):
+npx skills add F0Rextasy/testgate
+
+# or run it directly:
 git clone https://github.com/F0Rextasy/testgate
 cd myproject
 python /path/to/testgate/scripts/testgate.py tests/ --strict
