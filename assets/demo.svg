@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1017" height="264" viewBox="0 0 1017 264" font-family="'Cascadia Mono','Cascadia Code',Consolas,'DejaVu Sans Mono',monospace">
+<defs><clipPath id="c"><rect x="0" y="40" width="1017" height="224" rx="0"/></clipPath></defs>
+<rect width="1017" height="264" rx="10" fill="#0d1117"/>
+<path d="M0 10 A10 10 0 0 1 10 0 H1007 A10 10 0 0 1 1017 10 V40 H0 Z" fill="#161b22"/>
+<line x1="0" y1="40" x2="1017" y2="40" stroke="#30363d"/>
+<circle cx="20" cy="20" r="6.5" fill="#ff5f56"/>
+<circle cx="42" cy="20" r="6.5" fill="#ffbd2e"/>
+<circle cx="64" cy="20" r="6.5" fill="#27c93f"/>
+<text x="508" y="25" font-size="12.5" fill="#8b949e" text-anchor="middle">testgate  --  examples/vacuous</text>
+<text x="22" y="68" font-size="15" fill="#e6edf3" font-weight="600" xml:space="preserve">testgate/examples/vacuous\test_theater.py</text>
+<text x="22" y="90" font-size="15" fill="#ff7b72" xml:space="preserve">  L2    FAIL  tautology            asserts a constant</text>
+<text x="22" y="112" font-size="15" fill="#ff7b72" xml:space="preserve">  L5    FAIL  empty-test           test body is empty</text>
+<text x="22" y="134" font-size="15" fill="#ff7b72" xml:space="preserve">  L9    FAIL  no-assertion         executes code but never checks a result</text>
+<text x="22" y="156" font-size="15" fill="#ff7b72" xml:space="preserve">  L13   FAIL  test-off             disabled by a skip decorator</text>
+<text x="22" y="178" font-size="15" fill="#d29922" xml:space="preserve">  L18   WARN  conditional-assert   every assertion sits under an if -- the unguarded path can pass silently</text>
+<text x="22" y="222" font-size="15" fill="#ff7b72" xml:space="preserve">testgate: 4 failures, 1 warning across 5 tests in 1 file (0 exempt by &#x27;testgate: allow&#x27;)</text>
+<text x="22" y="244" font-size="15" fill="#c9d1d9" xml:space="preserve">testgate: fix the test -- or justify one line with:  # testgate: allow -- &lt;reason&gt;</text>
+</svg>

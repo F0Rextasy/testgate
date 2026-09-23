@@ -1,97 +1,53 @@
 # testgate
 
-**A test that cannot fail is worse than no test.** testgate finds the tests
-that can't fail: empty bodies, missing assertions, tautologies (`assert
-True`, `assert x == x`), skip-disabled tests, and assertions hiding behind
-an `if`. One command per gate — run it before every release.
+**Find tests that cannot fail.** Empty bodies, assertions on constants, skip-disabled tests, checks hidden under `if` - green runs that prove nothing. `testgate` statically scans your test tree and fails the build while the test theater is still in the script: milliseconds, offline, no coverage dashboard required.
+
+[![tests](https://img.shields.io/github/actions/workflow/status/F0Rextasy/testgate/test.yml?branch=master&label=tests&style=flat-square&color=3fb950)](https://github.com/F0Rextasy/testgate/actions/workflows/test.yml)
+[![python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
+[![license](https://img.shields.io/badge/license-MIT-3fb950?style=flat-square)](LICENSE)
+
+![testgate finding vacuous tests](assets/demo.svg)
 
 ## Why this exists
 
-CI is green, the badge is green, everyone stops looking. But nobody checked
-whether the tests could *ever* go red. testgate is a four-part quality-gate
-family for agent and human work:
+Coverage went up, the suite stayed green, and the bug shipped anyway - the new test asserted a constant, the "disabled" one skipped on every machine, and the real check sat under `if DEBUG:` where CI never goes. Vacuous tests are worse than no tests: they buy false confidence and hide the gap behind a checkmark. `testgate` reads the AST, finds tests that have no path to red, and makes that a build failure - the same way a linter makes a syntax error one.
 
-| Gate | Catches |
-| --- | --- |
-| **preflight** | `prod` in debug, `example.com` URLs, wildcard CORS, flat `requirements` |
-| **prove-it** | claims (`all tests pass`) with no executed command + exit code behind them |
-| **testgate** | tests that can never fail - the green that proves nothing |
-| testgate: finds the tests that cannot fail *(this repo)* |
-
-Copies the family contract: one Python script, zero dependencies, exit 0 =
-clean, 1 = theater found, 2 = usage error, `--strict` also fails warnings.
-
-## Install
-
-Single script, stdlib only (Python 3.8+). Vendor it or run in place:
+## Quick start
 
 ```bash
-cp scripts/testgate.py your-repo/scripts/
-python scripts/testgate.py tests/
+git clone https://github.com/F0Rextasy/testgate
+cd myproject
+python /path/to/testgate/scripts/testgate.py tests/ --strict
 ```
 
-Or as an Agent Skill:
+| Exit | Meaning |
+| --- | --- |
+| `0` | every test can fail (warnings allowed unless `--strict`) |
+| `1` | findings fail the gate |
+| `2` | usage error |
 
-```
-/testgate  # in Claude Code, Codex, Cursor, or any Agent Skills client
-```
+Point it at a project root (default `.`) or a single test file. Works on pytest/unittest-style Python out of the box; `--format json` for machines.
 
-## Usage
+## How it decides
 
-```console
-$ python scripts/testgate.py tests/
-app/test_api.py
-  L41   FAIL  no-assertion        executes code but never checks a result
-  L87   WARN  conditional-assert  every assertion sits under an if -- ...
-
-testgate: 1 failure, 1 warning across 42 tests in 3 files (0 exempt by 'testgate: allow')
-testgate: fix the test -- or justify one line with:  # testgate: allow -- <reason>
-[exit 1]
-```
-
-Point it at a project root or a single file. A single-file invocation
-bypasses the `test_*` name filter. Recursive discovery skips `.git`,
-`venv`, `node_modules`, `build`, `dist`, `site-packages` and friends.
-`--format json` emits the machine-readable findings; `--strict` also fails
-on warnings.
-
-## The rules
-
-| Rule | Severity | Finds |
-| --- | --- | --- |
-| `empty-test` | fail | body is only `pass`/docstring |
-| `no-assertion` | fail | runs code, checks nothing |
-| `tautology` | fail | assertion that cannot be false (`assert True`, `assert x == x`) |
-| `test-off` | fail | unconditionally skip-disabled (`@skip`, `@skipIf(True)`) |
-| `conditional-assert` | warn | every check sits under an `if` - the unguarded path passes silently |
-| `expected-fail` | warn | non-strict `@xfail`, which can never go red |
-| `unparseable` | warn | file does not parse - the runner will error on it |
-| `no-tests-found` | warn | no test files under the path at all |
-
-Full catalogue with trade-offs: [references/RULES.md](references/RULES.md).
-
-One finding chain per test: empty > off > tautologies > no-assertion. A
-skip-disabled test reports the skip, not the missing assertion — the skip
-is the actionable truth.
-
-Detection is syntactic: an `ast.Assert`, a call whose name starts with
-`assert`, or a known verification call (`raises`, `warns`, `fail`, mock's
-`assert_called*` family). Nothing is imported, nothing runs.
-
-An intentionally vacuous test (smoke checks, tracing stubs) is justified on
-the line the rule points at:
-
-```python
-def test_boot():  # testgate: allow -- smoke check; full suite in test_boot_full
-    run_boot()
+```mermaid
+flowchart TD
+    A["test file"] --> B["parse the AST"]
+    B --> C{function is a test?}
+    C -- no --> N[ignore]
+    C -- yes --> R{detector rules}
+    R --> F1["FAIL empty-test: body is empty"]
+    R --> F2["FAIL tautology: asserts a constant"]
+    R --> F3["FAIL no-assertion: runs code, checks nothing"]
+    R --> F4["FAIL test-off: skip decorator disables it"]
+    R --> F5["WARN conditional-assert:<br/>every assertion sits under an if"]
+    F1 & F2 & F3 & F4 --> X["exit 1: blocks"]
+    F5 --> S["warn only (fail with --strict)"]
 ```
 
-Exemptions stay visible: `(1 exempt by 'testgate: allow')` in every
-summary.
+Full rule catalogue with per-rule severity: [references/RULES.md](references/RULES.md).
 
-## Evidence (real outputs)
-
-Vacuous fixture, five theater patterns:
+## What it catches (real output)
 
 ```console
 $ python scripts/testgate.py examples/vacuous --no-color
@@ -107,40 +63,43 @@ testgate: fix the test -- or justify one line with:  # testgate: allow -- <reaso
 [exit 1]
 ```
 
-Clean fixture:
+A deliberate exception gets an in-place exemption that travels with the line:
 
-```console
-$ python scripts/testgate.py examples/clean --no-color
-testgate: clean -- 2 tests across 1 file checked, 0 findings (0 exempt by 'testgate: allow')
-[exit 0]
+```python
+def test_version_constant():
+    assert __version__  # testgate: allow -- version is compile-time fixed
 ```
 
-Contract tests, 8 for 8:
+## Wire it into CI
 
-```console
-$ python -m unittest discover -s tests
-........
-----------------------------------------------------------------------
-Ran 8 tests in 0.756s
-
-OK
-[exit 0]
+```yaml
+- uses: actions/checkout@v4
+- name: test theater gate
+  run: python testgate/scripts/testgate.py tests/ --strict
 ```
 
-Each test drives the real CLI against fixture projects and asserts the
-observable exit code, findings, and summary — nothing internal.
+Run it next to the suite: the suite says *did the tests pass?*, testgate says *could they have failed?*
 
-## Layout
+## What it will never do
 
-```text
-testgate/
-+-- scripts/testgate.py   # the gate (stdlib only, ~400 lines)
-+-- SKILL.md              # Agent Skill (Claude Code / Codex / Cursor)
-+-- examples/vacuous/     # fixture: all five theater patterns
-+-- examples/clean/       # fixture: real tests, gates clean
-+-- references/RULES.md   # rule catalogue, scope, escape hatch
-+-- tests/test_testgate.py # contract tests driving the real CLI
-```
+- Execute your tests - findings come from the AST, so a slow or side-effecting suite is scanned safely.
+- Flag a test for style - only for having no path to a red result.
+- Fail on a line you explicitly justified with `# testgate: allow -- <reason>`.
+
+## The family
+
+Deterministic gates - one Python script each, stdlib, same exit contract:
+
+| Gate | Catches |
+| --- | --- |
+| [preflight](https://github.com/F0Rextasy/preflight) | committed `.env`, weak secrets, debug-in-prod, wildcard CORS |
+| [bandaid](https://github.com/F0Rextasy/bandaid) | symptom-suppression patches: swallowed errors, disabled tests, removed guards |
+| [prove-it](https://github.com/F0Rextasy/prove-it) | claims with no executed evidence behind them |
+| **testgate** (this repo) | tests that can never fail |
+| [shipcheck](https://github.com/F0Rextasy/shipcheck) | broken, unimportable, or stale release artifacts |
+| [dsh-gate](https://github.com/F0Rextasy/dsh-gate) | red turns closing green in DeepSeek Harness |
+| [ci-triage](https://github.com/F0Rextasy/ci-triage) | red CI triaged without an LLM |
+| [docproof](https://github.com/F0Rextasy/docproof) | documentation snippets that no longer parse or run |
 
 ## License
 
